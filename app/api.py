@@ -3,10 +3,9 @@ import io
 import os
 import numpy as np
 import torch
-import uvicorn
 import cv2
 from PIL import Image
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
 from diffusers.utils import load_image
 from diffusers.models import ControlNetModel
@@ -41,7 +40,6 @@ pipe.cuda()
 
 print("🔄 Loading IP Adapter...")
 pipe.load_ip_adapter_instantid(os.path.join(CHECKPOINTS_DIR, "ip-adapter.bin"))
-
 pipe.enable_model_cpu_offload()
 pipe.enable_vae_tiling()
 
@@ -70,30 +68,37 @@ def pil_to_base64(image: Image.Image):
 def swap_face(req: FaceSwapRequest):
     print("⚙️ Processing request...")
 
-    # Convert images
-    face_image = base64_to_pil(req.face_image)
-    target_image = base64_to_pil(req.target_image)
+    try:
+        # Convert images
+        face_image = base64_to_pil(req.face_image)
+        target_image = base64_to_pil(req.target_image)
 
-    # Get face embedding
-    face_info = face_app.get(cv2.cvtColor(np.array(face_image), cv2.COLOR_RGB2BGR))
-    if not face_info:
-        return {"error": "No face detected in face_image"}
+        # Detect face and extract embedding
+        face_info = face_app.get(cv2.cvtColor(np.array(face_image), cv2.COLOR_RGB2BGR))
+        if not face_info:
+            return {"error": "No face detected in face_image"}
 
-    face_info = sorted(face_info, key=lambda x: (x['bbox'][2]-x['bbox'][0]) * (x['bbox'][3]-x['bbox'][1]))[-1]
-    face_emb = face_info['embedding']
-    face_kps = draw_kps(target_image, face_info['kps'])
+        face_info = sorted(face_info, key=lambda x: (x['bbox'][2] - x['bbox'][0]) * (x['bbox'][3] - x['bbox'][1]))[-1]
+        face_emb = face_info['embedding']
+        face_kps = draw_kps(target_image, face_info['kps'])
 
-    # Generate
-    result_image = pipe(
-        prompt=req.prompt,
-        negative_prompt=req.negative_prompt,
-        image_embeds=face_emb,
-        image=face_kps,
-        controlnet_conditioning_scale=req.controlnet_conditioning_scale,
-        ip_adapter_scale=req.ip_adapter_scale,
-        num_inference_steps=30,
-        guidance_scale=5,
-    ).images[0]
+        print("🎨 Generating image with prompt:", req.prompt)
 
-    # Return image
-    return {"output": pil_to_base64(result_image)}
+        # Generate image
+        result = pipe(
+            prompt=req.prompt,
+            negative_prompt=req.negative_prompt,
+            image_embeds=face_emb,
+            image=face_kps,
+            controlnet_conditioning_scale=req.controlnet_conditioning_scale,
+            ip_adapter_scale=req.ip_adapter_scale,
+            num_inference_steps=30,
+            guidance_scale=5,
+        )
+
+        result_image = result.images[0]
+        return {"output": pil_to_base64(result_image)}
+
+    except Exception as e:
+        print("❌ Error during face swap:", e)
+        return {"error": str(e)}
