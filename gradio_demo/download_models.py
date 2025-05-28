@@ -21,7 +21,7 @@ hf_hub_download(
     filename="pytorch_lora_weights.safetensors",
     local_dir="./checkpoints",
 )
-# # download antelopev2
-# gdown.download(url="https://drive.google.com/file/d/18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8/view?usp=sharing", output="./models/", quiet=False, fuzzy=True)
-# # unzip antelopev2.zip
-# os.system("unzip ./models/antelopev2.zip -d ./models/")
+# download antelopev2
+gdown.download(url="https://drive.google.com/file/d/18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8/view?usp=sharing", output="./models/", quiet=False, fuzzy=True)
+# unzip antelopev2.zip
+os.system("unzip ./models/antelopev2.zip -d ./models/")
