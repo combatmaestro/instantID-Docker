@@ -9,7 +9,7 @@ from PIL import Image
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
-from diffusers.utils import load_image
+from diffusers.utils import load_image as hf_load_image
 from diffusers.models import ControlNetModel
 from insightface.app import FaceAnalysis
 from pipeline_stable_diffusion_xl_instantid import StableDiffusionXLInstantIDPipeline, draw_kps
@@ -59,7 +59,7 @@ class FaceSwapRequest(BaseModel):
 # ---------- Helpers ----------
 def base64_to_pil(base64_str):
     image_data = base64.b64decode(base64_str)
-    return Image.open(io.BytesIO(image_data)).convert("RGB")
+    return hf_load_image(Image.open(io.BytesIO(image_data)).convert("RGB"))
 
 def pil_to_base64(image: Image.Image):
     buffered = io.BytesIO()
@@ -73,7 +73,7 @@ def load_image_input(base64_str: Optional[str], url: Optional[str]):
         response = requests.get(url)
         if response.status_code != 200:
             raise ValueError(f"Failed to fetch image from URL: {url}")
-        return Image.open(io.BytesIO(response.content)).convert("RGB")
+        return hf_load_image(Image.open(io.BytesIO(response.content)).convert("RGB"))
     else:
         raise ValueError("No valid image input provided")
 
@@ -86,18 +86,18 @@ def swap_face(req: FaceSwapRequest):
         face_image = load_image_input(req.face_image, req.face_image_url)
         target_image = load_image_input(req.target_image, req.target_image_url)
 
-        # Detect face and extract embedding
-        face_info = face_app.get(cv2.cvtColor(np.array(face_image), cv2.COLOR_RGB2BGR))
-        if not face_info:
+        # Detect face and extract embedding from face_image
+        face_info_list = face_app.get(cv2.cvtColor(np.array(face_image), cv2.COLOR_RGB2BGR))
+        if not face_info_list:
             return {"error": "No face detected in face_image"}
 
-        face_info = sorted(face_info, key=lambda x: (x['bbox'][2] - x['bbox'][0]) * (x['bbox'][3] - x['bbox'][1]))[-1]
+        # Use the largest face
+        face_info = sorted(face_info_list, key=lambda x: (x['bbox'][2]-x['bbox'][0]) * (x['bbox'][3]-x['bbox'][1]))[-1]
         face_emb = face_info['embedding']
-        face_kps = draw_kps(target_image, face_info['kps'])
+        face_kps = draw_kps(face_image, face_info['kps'])  # use face_image for pose, NOT target
 
         print("🎨 Generating image with prompt:", req.prompt)
 
-        # Generate image
         result = pipe(
             prompt=req.prompt,
             negative_prompt=req.negative_prompt,
