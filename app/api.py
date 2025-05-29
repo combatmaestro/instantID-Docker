@@ -148,4 +148,5 @@ def blend_face(data: InferenceInput):
     buffered = io.BytesIO()
     result.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-    return {"image": img_str}
+    return {"image": f"data:image/png;base64,{img_str}"}
+
