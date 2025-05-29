@@ -69,7 +69,7 @@ class InferenceInput(BaseModel):
     pose_image: Optional[str] = None
     prompt: str
     negative_prompt: Optional[str] = ""
-    style_name: Optional[str] = "Watercolor"
+    style_name: Optional[str] = "none"
     num_steps: Optional[int] = 30
     identitynet_strength_ratio: Optional[float] = 0.8
     adapter_strength_ratio: Optional[float] = 0.8
