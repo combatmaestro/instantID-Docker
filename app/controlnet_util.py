@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 from controlnet_aux import OpenposeDetector
-from model_util import get_torch_device
+from .model_util import get_torch_device
 import cv2
 
 
