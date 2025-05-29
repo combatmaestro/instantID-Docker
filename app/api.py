@@ -152,7 +152,7 @@ def blend_face(data: BlendInput):
         control_scales = [float(data.identitynet_strength_ratio)] + [
             {"pose": data.pose_strength, "canny": data.canny_strength, "depth": data.depth_strength}[k] for k in data.controlnet_selection
         ]
-
+        face_kps = face_kps.resize((width, height)) 
         control_images = [face_kps] + [
             controlnet_map_fn[k](img_controlnet).resize((width, height)) for k in data.controlnet_selection
         ]
