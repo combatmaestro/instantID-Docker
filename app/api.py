@@ -20,6 +20,7 @@ from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
 from diffusers.utils import load_image
 from insightface.app import FaceAnalysis
 from .style_template import styles
+
 # Setup
 app = FastAPI()
 MAX_SEED = np.iinfo(np.int32).max
@@ -33,7 +34,7 @@ face_analyzer = FaceAnalysis(name="antelopev2", root="./", providers=["CUDAExecu
 face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
 
 # Load ControlNets
-controlnet_identitynet = ControlNetModel.from_pretrained("./checkpoints/ControlNetModel", torch_dtype=dtype,use_safetensors=True)
+controlnet_identitynet = ControlNetModel.from_pretrained("./checkpoints/ControlNetModel", torch_dtype=dtype, use_safetensors=True)
 controlnet_pose = ControlNetModel.from_pretrained("thibaud/controlnet-openpose-sdxl-1.0", torch_dtype=dtype).to(device)
 controlnet_canny = ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0", torch_dtype=dtype).to(device)
 controlnet_depth = ControlNetModel.from_pretrained("diffusers/controlnet-depth-sdxl-1.0-small", torch_dtype=dtype).to(device)
@@ -128,14 +129,14 @@ def blend_face(data: BlendInput):
             raise HTTPException(status_code=400, detail="No face detected in pose_image")
         face_kps = draw_kps(pose_image, pose_info[-1]['kps'])
         img_controlnet = pose_image
-        width, height = face_kps.size
 
+    face_kps = face_kps.resize((width, height))
     control_mask = None
     if data.enhance_face_region:
         mask = np.zeros([height, width, 3])
         x1, y1, x2, y2 = map(int, face_info["bbox"])
         mask[y1:y2, x1:x2] = 255
-        control_mask = Image.fromarray(mask.astype(np.uint8))
+        control_mask = Image.fromarray(mask.astype(np.uint8)).resize((width, height))
 
     if data.enable_LCM:
         pipe.scheduler = LCMScheduler.from_config(pipe.scheduler.config)
@@ -152,14 +153,13 @@ def blend_face(data: BlendInput):
         control_scales = [float(data.identitynet_strength_ratio)] + [
             {"pose": data.pose_strength, "canny": data.canny_strength, "depth": data.depth_strength}[k] for k in data.controlnet_selection
         ]
-        face_kps = face_kps.resize((width, height)) 
         control_images = [face_kps] + [
             controlnet_map_fn[k](img_controlnet).resize((width, height)) for k in data.controlnet_selection
         ]
     else:
         pipe.controlnet = controlnet_identitynet
         control_scales = float(data.identitynet_strength_ratio)
-        control_images = face_kps.resize((width, height))
+        control_images = face_kps
 
     pipe.set_ip_adapter_scale(data.adapter_strength_ratio)
     generator = torch.Generator(device=device).manual_seed(data.seed)
