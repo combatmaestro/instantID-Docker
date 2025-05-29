@@ -159,7 +159,7 @@ def blend_face(data: BlendInput):
     else:
         pipe.controlnet = controlnet_identitynet
         control_scales = float(data.identitynet_strength_ratio)
-        control_images = face_kps
+        control_images = face_kps.resize((width, height))
 
     pipe.set_ip_adapter_scale(data.adapter_strength_ratio)
     generator = torch.Generator(device=device).manual_seed(data.seed)
