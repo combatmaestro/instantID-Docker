@@ -79,11 +79,9 @@ class InferenceInput(BaseModel):
 
 @app.post("/blend")
 def blend_face(data: InferenceInput):
-    # Step 2: Match Gradio's randomize_seed_fn
     if data.randomize_seed:
         data.seed = random.randint(0, 2**31 - 1)
 
-    # Decode face image
     face_img = decode_base64_image(data.face_image)
     face_img = resize_img(face_img)
     face_cv2 = convert_pil_to_cv2(face_img)
@@ -115,6 +113,10 @@ def blend_face(data: InferenceInput):
         x1, y1, x2, y2 = map(int, face_info["bbox"])
         control_mask_np[y1:y2, x1:x2] = 255
         control_mask = Image.fromarray(control_mask_np)
+
+        # 🔧 Fix for shape mismatch errors
+        if control_mask.size != face_kps.size:
+            control_mask = control_mask.resize(face_kps.size, resample=Image.BILINEAR)
 
     if data.enable_LCM:
         pipe.enable_lora()
