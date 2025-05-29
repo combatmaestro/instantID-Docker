@@ -24,7 +24,7 @@ from .style_template import styles
 # Setup
 app = FastAPI()
 MAX_SEED = np.iinfo(np.int32).max
-DEFAULT_STYLE_NAME = "(No style)"
+DEFAULT_STYLE_NAME = "Watercolor"
 device = get_torch_device()
 dtype = torch.float16 if "cuda" in str(device) else torch.float32
 STYLE_NAMES = list(styles.keys())
@@ -34,7 +34,7 @@ face_analyzer = FaceAnalysis(name="antelopev2", root="./", providers=["CUDAExecu
 face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
 
 # Load ControlNets
-controlnet_identitynet = ControlNetModel.from_pretrained("./checkpoints/ControlNetModel", torch_dtype=dtype, use_safetensors=True)
+controlnet_identitynet = ControlNetModel.from_pretrained("./checkpoints/ControlNetModel", torch_dtype=dtype, use_safetensors=True).to(device)
 controlnet_pose = ControlNetModel.from_pretrained("thibaud/controlnet-openpose-sdxl-1.0", torch_dtype=dtype).to(device)
 controlnet_canny = ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0", torch_dtype=dtype).to(device)
 controlnet_depth = ControlNetModel.from_pretrained("diffusers/controlnet-depth-sdxl-1.0-small", torch_dtype=dtype).to(device)
@@ -88,7 +88,7 @@ class BlendInput(BaseModel):
     face_image: str
     pose_image: Optional[str] = None
     prompt: str
-    negative_prompt: Optional[str] = "(lowres, low quality, worst quality:1.2), (text:1.2), watermark, (frame:1.2), deformed, ugly, deformed eyes, blur, out of focus, blurry, deformed cat, deformed, photo, anthropomorphic cat, monochrome, pet collar, gun, weapon, blue, 3d, drones, drone, buildings in background, green"
+    negative_prompt: Optional[str] = ""
     style_name: Optional[str] = DEFAULT_STYLE_NAME
     num_steps: Optional[int] = 30
     identitynet_strength_ratio: Optional[float] = 0.8
