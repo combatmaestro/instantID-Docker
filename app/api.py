@@ -46,13 +46,15 @@ midas = MidasDetector.from_pretrained("lllyasviel/Annotators")
 def decode_base64_image(base64_str):
     return Image.open(io.BytesIO(base64.b64decode(base64_str)))
 
-def resize_img(input_image, max_side=1280, min_side=1024):
+def resize_img(input_image, max_side=1280, min_side=1024, base_pixel_number=64):
     w, h = input_image.size
     ratio = min_side / min(h, w)
     w, h = round(ratio * w), round(ratio * h)
     ratio = max_side / max(h, w)
-    input_image = input_image.resize([round(ratio * w), round(ratio * h)], Image.BILINEAR)
-    return input_image
+    w, h = round(ratio * w), round(ratio * h)
+    w = (w // base_pixel_number) * base_pixel_number
+    h = (h // base_pixel_number) * base_pixel_number
+    return input_image.resize([w, h], Image.BILINEAR)
 
 def convert_pil_to_cv2(img: Image.Image):
     return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
@@ -103,8 +105,10 @@ def blend_face(data: InferenceInput):
             raise HTTPException(status_code=400, detail="No face detected in pose image.")
         pose_info = pose_info[-1]
         face_kps = draw_kps(pose_img, pose_info['kps'])
+        face_kps = face_kps.resize(pose_img.size)  # Force same size
         width, height = face_kps.size
     else:
+        face_kps = face_kps.resize(face_img.size)  # Force same size
         width, height = face_kps.size
 
     control_mask = None
@@ -114,7 +118,6 @@ def blend_face(data: InferenceInput):
         control_mask_np[y1:y2, x1:x2] = 255
         control_mask = Image.fromarray(control_mask_np)
 
-        # 🔧 Fix for shape mismatch errors
         if control_mask.size != face_kps.size:
             control_mask = control_mask.resize(face_kps.size, resample=Image.BILINEAR)
 
