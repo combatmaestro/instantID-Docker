@@ -24,7 +24,7 @@ from .style_template import styles
 # Setup
 app = FastAPI()
 MAX_SEED = np.iinfo(np.int32).max
-DEFAULT_STYLE_NAME = "Watercolor"
+DEFAULT_STYLE_NAME = "(No style)"
 device = get_torch_device()
 dtype = torch.float16 if "cuda" in str(device) else torch.float32
 STYLE_NAMES = list(styles.keys())
@@ -88,17 +88,17 @@ class BlendInput(BaseModel):
     face_image: str
     pose_image: Optional[str] = None
     prompt: str
-    negative_prompt: Optional[str] = ""
+    negative_prompt: Optional[str] = "(lowres, low quality, worst quality:1.2), (text:1.2), watermark, (frame:1.2), deformed, ugly, deformed eyes, blur, out of focus, blurry, deformed cat, deformed, photo, anthropomorphic cat, monochrome, pet collar, gun, weapon, blue, 3d, drones, drone, buildings in background, green"
     style_name: Optional[str] = DEFAULT_STYLE_NAME
     num_steps: Optional[int] = 30
     identitynet_strength_ratio: Optional[float] = 0.8
     adapter_strength_ratio: Optional[float] = 0.8
     pose_strength: Optional[float] = 0.4
-    canny_strength: Optional[float] = 0.3
-    depth_strength: Optional[float] = 0.5
+    canny_strength: Optional[float] = 0.4
+    depth_strength: Optional[float] = 0.4
     controlnet_selection: Optional[List[str]] = ["pose"]
     guidance_scale: Optional[float] = 5.0
-    seed: Optional[int] = 42
+    seed: Optional[int] = 1016821440
     scheduler: Optional[str] = "EulerDiscreteScheduler"
     randomize_seed: Optional[bool] = True
     enable_LCM: Optional[bool] = False
