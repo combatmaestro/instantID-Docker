@@ -68,7 +68,7 @@ class InferenceInput(BaseModel):
     face_image: str
     pose_image: Optional[str] = None
     prompt: str
-    negative_prompt: Optional[str] = ""
+    negative_prompt: Optional[str] = "(lowres, low quality, worst quality:1.2), (text:1.2), watermark, (frame:1.2), deformed, ugly, deformed eyes, blur, out of focus, blurry, deformed cat, deformed, photo, anthropomorphic cat, monochrome, pet collar, gun, weapon, blue, 3d, drones, drone, buildings in background, green"
     style_name: Optional[str] = "none"
     num_steps: Optional[int] = 30
     identitynet_strength_ratio: Optional[float] = 0.8
