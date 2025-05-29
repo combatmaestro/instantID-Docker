@@ -33,7 +33,7 @@ face_analyzer = FaceAnalysis(name="antelopev2", root="./", providers=["CUDAExecu
 face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
 
 # Load ControlNets
-controlnet_identitynet = ControlNetModel.from_pretrained("./checkpoints/ControlNetModel", torch_dtype=dtype)
+controlnet_identitynet = ControlNetModel.from_pretrained("./checkpoints/ControlNetModel", torch_dtype=dtype,use_safetensors=True)
 controlnet_pose = ControlNetModel.from_pretrained("thibaud/controlnet-openpose-sdxl-1.0", torch_dtype=dtype).to(device)
 controlnet_canny = ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0", torch_dtype=dtype).to(device)
 controlnet_depth = ControlNetModel.from_pretrained("diffusers/controlnet-depth-sdxl-1.0-small", torch_dtype=dtype).to(device)
