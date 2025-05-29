@@ -182,6 +182,8 @@ def blend_face(data: BlendInput):
     ).images[0]
 
     buffer = io.BytesIO()
-    result.save(buffer, format="PNG")
+    result = result.convert("RGB")
+    result.save(buffer, format="JPEG", quality=85)
     img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
     return {"image": img_str}
