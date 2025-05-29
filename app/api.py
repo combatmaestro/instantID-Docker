@@ -66,7 +66,10 @@ def resize_img(input_image: Image.Image, max_side=1280, min_side=1024) -> Image.
     ratio = min_side / min(h, w)
     w, h = round(ratio * w), round(ratio * h)
     ratio = max_side / max(h, w)
-    input_image = input_image.resize([round(ratio * w), round(ratio * h)], Image.BILINEAR)
+    w, h = round(ratio * w), round(ratio * h)
+    w -= w % 64
+    h -= h % 64
+    input_image = input_image.resize((w, h), Image.BILINEAR)
     return input_image
 
 def convert_to_cv2(img: Image.Image):
@@ -108,7 +111,7 @@ def blend_face(data: BlendInput):
 
     prompt, negative_prompt = apply_style(data.style_name, data.prompt, data.negative_prompt)
 
-    face_image = resize_img(decode_image(data.face_image), max_side=1024)
+    face_image = resize_img(decode_image(data.face_image))
     face_cv2 = convert_to_cv2(face_image)
     height, width, _ = face_cv2.shape
 
@@ -122,15 +125,15 @@ def blend_face(data: BlendInput):
 
     img_controlnet = face_image
     if data.pose_image:
-        pose_image = resize_img(decode_image(data.pose_image), max_side=1024)
+        pose_image = resize_img(decode_image(data.pose_image))
         pose_cv2 = convert_to_cv2(pose_image)
         pose_info = face_analyzer.get(pose_cv2)
         if not pose_info:
             raise HTTPException(status_code=400, detail="No face detected in pose_image")
         face_kps = draw_kps(pose_image, pose_info[-1]['kps'])
         img_controlnet = pose_image
+        width, height = face_kps.size
 
-    face_kps = face_kps.resize((width, height))
     control_mask = None
     if data.enhance_face_region:
         mask = np.zeros([height, width, 3])
@@ -153,13 +156,14 @@ def blend_face(data: BlendInput):
         control_scales = [float(data.identitynet_strength_ratio)] + [
             {"pose": data.pose_strength, "canny": data.canny_strength, "depth": data.depth_strength}[k] for k in data.controlnet_selection
         ]
+        face_kps = face_kps.resize((width, height)) 
         control_images = [face_kps] + [
             controlnet_map_fn[k](img_controlnet).resize((width, height)) for k in data.controlnet_selection
         ]
     else:
         pipe.controlnet = controlnet_identitynet
         control_scales = float(data.identitynet_strength_ratio)
-        control_images = face_kps
+        control_images = face_kps.resize((width, height))
 
     pipe.set_ip_adapter_scale(data.adapter_strength_ratio)
     generator = torch.Generator(device=device).manual_seed(data.seed)
