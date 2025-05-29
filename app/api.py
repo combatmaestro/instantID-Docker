@@ -12,15 +12,14 @@ from PIL import Image
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Union
-from model_util import load_models_xl, get_torch_device
+from .model_util import load_models_xl, get_torch_device
 from pipeline_stable_diffusion_xl_instantid_full import StableDiffusionXLInstantIDPipeline
-from controlnet_util import openpose, get_depth_map, get_canny_image
+from .controlnet_util import openpose, get_depth_map, get_canny_image
 from diffusers import ControlNetModel, EulerDiscreteScheduler, LCMScheduler
 from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
 from diffusers.utils import load_image
 from insightface.app import FaceAnalysis
-from style_template import styles
-
+from .style_template import styles
 # Setup
 app = FastAPI()
 MAX_SEED = np.iinfo(np.int32).max
