@@ -16,7 +16,7 @@ gdown
 huggingface_hub==0.20.3
 diffusers==0.24.0
 accelerate==0.21.0
-
+kagglehub
 
 
 

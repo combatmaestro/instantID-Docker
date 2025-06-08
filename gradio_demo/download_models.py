@@ -1,6 +1,7 @@
 from huggingface_hub import hf_hub_download
+import kagglehub
+import shutil
 import os
-import zipfile
 
 # === Download from HuggingFace ===
 print("📥 Downloading ControlNet config and model...")
@@ -28,29 +29,22 @@ hf_hub_download(
     local_dir="./checkpoints",
 )
 
-# === Download antelopev2.zip using Kaggle curl ===
-print("📥 Downloading antelopev2.zip from Kaggle...")
+# === Download antelopev2 via kagglehub ===
+print("📥 Downloading antelopev2 model via kagglehub...")
 
-# Target directories
-insightface_dir = "./checkpoints/insightface"
-zip_path = os.path.join(insightface_dir, "antelopev2.zip")
+# This will download and extract into a cache dir like ~/.kagglehub/
+path = kagglehub.dataset_download("dipakbg145198/antelopev2")
 
-# Ensure folder exists
-os.makedirs(insightface_dir, exist_ok=True)
+print("📦 antelopev2 files downloaded to:", path)
 
-# Use curl to download (requires kaggle.json properly set up)
-curl_command = (
-    f"curl -L -o {zip_path} "
-    "https://www.kaggle.com/api/v1/datasets/download/dipakbg145198/antelopev2"
-)
-os.system(curl_command)
+# === Copy files to the project directory ===
+target_dir = "./checkpoints/insightface/models"
+os.makedirs(target_dir, exist_ok=True)
 
-# === Unzip the downloaded file ===
-print("🗜️ Extracting antelopev2.zip...")
-with zipfile.ZipFile(zip_path, "r") as zip_ref:
-    zip_ref.extractall(insightface_dir)
+for file in os.listdir(path):
+    source_file = os.path.join(path, file)
+    target_file = os.path.join(target_dir, file)
+    shutil.copy2(source_file, target_file)
 
-# Optional: Remove ZIP after extraction
-os.remove(zip_path)
-
-print("✅ All models downloaded and extracted successfully.")
+print("✅ antelopev2 model copied to:", target_dir)
+print("✅ All models downloaded and ready.")
