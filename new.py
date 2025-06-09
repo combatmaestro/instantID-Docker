@@ -22,7 +22,9 @@ from diffusers.utils import load_image
 from style_template import styles
 from pipeline_stable_diffusion_xl_instantid_full import StableDiffusionXLInstantIDPipeline
 from model_util import load_models_xl, get_torch_device, torch_gc
+
 DEFAULT_STYLE_NAME = "Watercolor"
+
 # --- Setup ---
 app = FastAPI()
 
@@ -128,10 +130,10 @@ async def generate(
         pose = Image.open(BytesIO(await pose_image.read())).convert("RGB")
         pose = resize_img(pose)
         pose_cv2 = convert_to_cv2(pose)
-        face_info = face_app.get(pose_cv2)
-        if len(face_info) == 0:
+        pose_info = face_app.get(pose_cv2)
+        if len(pose_info) == 0:
             return JSONResponse({"error": "No face found in pose image"}, status_code=400)
-        kps = face_info[-1]['kps']
+        kps = pose_info[-1]['kps']
 
     # Create control image
     control_img = np.zeros((height, width, 3), dtype=np.uint8)
@@ -173,7 +175,6 @@ async def generate(
     return {"image_base64": img_str}
 
 
-# Optional root redirect
 @app.get("/")
 def root():
     return {"message": "InstantID API is running."}
