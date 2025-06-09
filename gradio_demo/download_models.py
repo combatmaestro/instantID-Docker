@@ -32,21 +32,23 @@ hf_hub_download(
 )
 
 print("📥 Downloading antelopev2.zip from Google Drive...")
-os.makedirs("./checkpoints/insightface", exist_ok=True)
+
+# This is the folder InsightFace will look in: ./models/antelopev2/models/
+os.makedirs("./models", exist_ok=True)
 
 gdown.download(
     url="https://drive.google.com/uc?id=1tQsgEfP1gfQpu3IGeK0jCVMs4i6kD4g0",
-    output="./checkpoints/insightface/antelopev2.zip",
+    output="./models/antelopev2.zip",
     quiet=False
 )
 
-# === Unzip to models directory ===
+# ✅ Extract it to ./models/antelopev2/models/
 print("🗜️ Extracting antelopev2.zip...")
-with zipfile.ZipFile("./checkpoints/insightface/antelopev2.zip", 'r') as zip_ref:
-    zip_ref.extractall("./checkpoints/insightface/models")
+with zipfile.ZipFile("./models/antelopev2.zip", 'r') as zip_ref:
+    zip_ref.extractall("./models/antelopev2")
 
-# Optional: Remove ZIP after extraction
-os.remove("./checkpoints/insightface/antelopev2.zip")
+os.remove("./models/antelopev2.zip")
 
-print("✅ antelopev2 models ready in ./checkpoints/insightface/models/")
+print("✅ antelopev2 models are now in ./models/antelopev2/models/")
+
 print("✅ All models downloaded and ready.")
