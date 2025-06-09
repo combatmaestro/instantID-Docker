@@ -21,13 +21,12 @@ from diffusers.utils import load_image
 
 from style_template import styles
 from pipeline_stable_diffusion_xl_instantid_full import StableDiffusionXLInstantIDPipeline
-from model_util import load_models_xl, get_torch_device, torch_gc
+from model_util import get_torch_device
 
 DEFAULT_STYLE_NAME = "Watercolor"
 
 # --- Setup ---
 app = FastAPI()
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,7 +67,7 @@ def convert_to_cv2(img: Image.Image):
 def convert_to_image(img_cv2: np.ndarray):
     return Image.fromarray(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB))
 
-def resize_img(input_image: Image.Image, max_side=1280, min_side=1024):
+def resize_img(input_image: Image.Image, max_side=768, min_side=512):
     w, h = input_image.size
     ratio = min_side / min(h, w)
     w, h = round(ratio * w), round(ratio * h)
@@ -106,73 +105,85 @@ async def generate(
     enhance_face_region: bool = Form(True),
     pose_image: Optional[UploadFile] = File(None)
 ):
-    if enable_lcm:
-        pipe.enable_lora()
-        pipe.scheduler = LCMScheduler.from_config(pipe.scheduler.config)
-    else:
-        pipe.disable_lora()
-        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+    try:
+        if enable_lcm:
+            pipe.enable_lora()
+            pipe.scheduler = LCMScheduler.from_config(pipe.scheduler.config)
+        else:
+            pipe.disable_lora()
+            pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
 
-    image = Image.open(BytesIO(await face_image.read())).convert("RGB")
-    image = resize_img(image)
-    image_cv2 = convert_to_cv2(image)
-    height, width, _ = image_cv2.shape
+        image = Image.open(BytesIO(await face_image.read())).convert("RGB")
+        image = resize_img(image)
+        image_cv2 = convert_to_cv2(image)
+        height, width, _ = image_cv2.shape
 
-    face_info = face_app.get(image_cv2)
-    if len(face_info) == 0:
-        return JSONResponse({"error": "No face found in face image"}, status_code=400)
+        face_info = face_app.get(image_cv2)
+        if len(face_info) == 0:
+            return JSONResponse({"error": "No face found in face image"}, status_code=400)
 
-    face_info = sorted(face_info, key=lambda x: (x['bbox'][2]-x['bbox'][0])*(x['bbox'][3]-x['bbox'][1]))[-1]
-    face_emb = face_info['embedding']
-    kps = face_info['kps']
+        face_info = sorted(face_info, key=lambda x: (x['bbox'][2]-x['bbox'][0])*(x['bbox'][3]-x['bbox'][1]))[-1]
+        face_emb = face_info['embedding']
+        kps = face_info['kps']
 
-    if pose_image:
-        pose = Image.open(BytesIO(await pose_image.read())).convert("RGB")
-        pose = resize_img(pose)
-        pose_cv2 = convert_to_cv2(pose)
-        pose_info = face_app.get(pose_cv2)
-        if len(pose_info) == 0:
-            return JSONResponse({"error": "No face found in pose image"}, status_code=400)
-        kps = pose_info[-1]['kps']
+        if pose_image:
+            pose = Image.open(BytesIO(await pose_image.read())).convert("RGB")
+            pose = resize_img(pose)
+            pose_cv2 = convert_to_cv2(pose)
+            pose_info = face_app.get(pose_cv2)
+            if len(pose_info) == 0:
+                return JSONResponse({"error": "No face found in pose image"}, status_code=400)
+            kps = pose_info[-1]['kps']
 
-    # Create control image
-    control_img = np.zeros((height, width, 3), dtype=np.uint8)
-    for (x, y) in kps:
-        cv2.circle(control_img, (int(x), int(y)), 5, (255, 0, 0), -1)
-    control_pil = convert_to_image(control_img)
+        # Create control image
+        control_img = np.zeros((height, width, 3), dtype=np.uint8)
+        for (x, y) in kps:
+            cv2.circle(control_img, (int(x), int(y)), 5, (255, 0, 0), -1)
+        control_pil = convert_to_image(control_img)
 
-    control_mask = None
-    if enhance_face_region:
-        x1, y1, x2, y2 = map(int, face_info['bbox'])
-        mask = np.zeros((height, width, 3), dtype=np.uint8)
-        mask[y1:y2, x1:x2] = 255
-        control_mask = Image.fromarray(mask)
+        control_mask = None
+        if enhance_face_region:
+            x1, y1, x2, y2 = map(int, face_info['bbox'])
+            mask = np.zeros((height, width, 3), dtype=np.uint8)
+            mask[y1:y2, x1:x2] = 255
+            control_mask = Image.fromarray(mask)
 
-    # Apply style
-    prompt, negative_prompt = apply_style(style, prompt, negative_prompt)
+        # Apply style
+        prompt, negative_prompt = apply_style(style, prompt, negative_prompt)
 
-    generator = torch.Generator(device=device).manual_seed(seed)
-    pipe.set_ip_adapter_scale(adapter_strength)
+        generator = torch.Generator(device=device).manual_seed(seed)
+        pipe.set_ip_adapter_scale(adapter_strength)
 
-    result = pipe(
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        image_embeds=face_emb,
-        image=control_pil,
-        control_mask=control_mask,
-        controlnet_conditioning_scale=float(identitynet_strength),
-        num_inference_steps=steps,
-        guidance_scale=guidance,
-        height=height,
-        width=width,
-        generator=generator
-    ).images[0]
+        result = pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            image_embeds=face_emb,
+            image=control_pil,
+            control_mask=control_mask,
+            controlnet_conditioning_scale=float(identitynet_strength),
+            num_inference_steps=steps,
+            guidance_scale=guidance,
+            height=height,
+            width=width,
+            generator=generator
+        ).images[0]
 
-    buffer = BytesIO()
-    result.save(buffer, format="PNG")
-    img_str = base64.b64encode(buffer.getvalue()).decode()
+        buffer = BytesIO()
+        result.save(buffer, format="PNG")
+        img_str = base64.b64encode(buffer.getvalue()).decode()
 
-    return {"image_base64": img_str}
+        torch.cuda.empty_cache()  # ✅ Free memory between requests
+
+        return {"image_base64": img_str}
+
+    except torch.cuda.OutOfMemoryError:
+        torch.cuda.empty_cache()
+        return JSONResponse(
+            {"error": "CUDA out of memory. Try reducing resolution or enable_lcm."},
+            status_code=500
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.get("/")
