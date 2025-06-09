@@ -1,24 +1,36 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
+# Web server & API
+fastapi==0.95.2
+uvicorn==0.24.0
+
+# Torch and vision
 torch==2.0.1
 torchvision==0.15.2
+
+# Diffusion & Transformers
 diffusers==0.24.0
 transformers==4.35.2
 accelerate==0.25.0
+
+# Face analysis
 insightface==0.7.3
+onnxruntime-gpu==1.16.3  # Explicit GPU version
 opencv-python==4.8.1.78
 Pillow==10.1.0
 numpy==1.24.3
-pydantic==2.5.0
+
+# Pydantic compatibility
+pydantic==1.10.13
+
+# FastAPI utilities
 python-multipart==0.0.6
 aiofiles==23.2.0
 
-# Model download dependencies
+# Model download tools
 huggingface-hub==0.19.4
 requests==2.31.0
 gdown==4.7.1
 tqdm==4.66.1
 
-# Additional utilities
+# Extra utilities
 python-dotenv==1.0.0
 watchdog==3.0.0
