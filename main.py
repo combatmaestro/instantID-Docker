@@ -123,7 +123,8 @@ class ModelManager:
             
             # Load IP adapter
             self.pipeline.load_ip_adapter_instantid(face_adapter)
-            
+            # Inject flag to require identity embedding
+            self.pipeline.requires_image_embeds = True
             self.model_loaded = True
             logger.info("Models loaded successfully!")
             
