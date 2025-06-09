@@ -33,22 +33,26 @@ hf_hub_download(
 print("📥 Downloading antelopev2.zip from Google Drive...")
 
 # Ensure models directory exists
-os.makedirs("./models", exist_ok=True)
+os.makedirs('./models', exist_ok=True)
 
-# Download antelopev2.zip from Google Drive
-url = "https://drive.google.com/uc?id=1tQsgEfP1gfQpu3IGeK0jCVMs4i6kD4g0"
-output_path = "./models/antelopev2.zip"
+# Direct download link
+url = "https://huggingface.co/combatmaestro/antelopeV2/resolve/main/antelopev2.zip"
+zip_path = "./models/antelopev2.zip"
 
-print("📥 Downloading antelopev2.zip...")
-gdown.download(url, output_path, quiet=False)
+# Download the zip file
+print("📥 Downloading antelopev2.zip from Hugging Face...")
+with requests.get(url, stream=True) as r:
+    r.raise_for_status()
+    with open(zip_path, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=8192):
+            f.write(chunk)
 
-# Extract zip
+# Extract it
 print("🗜️ Extracting antelopev2.zip...")
-with zipfile.ZipFile(output_path, 'r') as zip_ref:
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
     zip_ref.extractall("./models/antelopev2")
 
-# Optional: remove zip after extraction
-os.remove(output_path)
-print("✅ Done!")
+os.remove(zip_path)
+print("✅ Model download and extraction complete.")
 
 print("✅ All models downloaded and ready.")
