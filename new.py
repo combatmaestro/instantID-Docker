@@ -19,10 +19,10 @@ from diffusers.models import ControlNetModel
 from diffusers import EulerDiscreteScheduler, LCMScheduler
 from diffusers.utils import load_image
 
-from style_template import styles, DEFAULT_STYLE_NAME
+from style_template import styles
 from pipeline_stable_diffusion_xl_instantid_full import StableDiffusionXLInstantIDPipeline
 from model_util import load_models_xl, get_torch_device, torch_gc
-
+DEFAULT_STYLE_NAME = "Watercolor"
 # --- Setup ---
 app = FastAPI()
 
