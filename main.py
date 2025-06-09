@@ -1,7 +1,7 @@
 # InstantID API Server Implementation
 # This creates REST endpoints similar to Replicate's InstantID service
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -130,49 +130,38 @@ class ModelManager:
         except Exception as e:
             logger.error(f"Error loading models: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to load models: {str(e)}")
-    
+
     def extract_face_features(self, face_image: Image.Image):
         """Extract face embeddings and keypoints from image"""
         try:
             # Convert PIL to OpenCV format
             face_array = cv2.cvtColor(np.array(face_image), cv2.COLOR_RGB2BGR)
-            
             # Get face info
             face_info = self.face_app.get(face_array)
             if not face_info:
                 raise ValueError("No face detected in the image")
-            
             # Use the largest face
             face_info = sorted(
                 face_info, 
                 key=lambda x: (x['bbox'][2]-x['bbox'][0]) * (x['bbox'][3]-x['bbox'][1])
             )[-1]
-            
             face_emb = face_info['embedding']
             face_kps = draw_kps(face_image, face_info['kps'])
-            
             return face_emb, face_kps
-            
         except Exception as e:
             logger.error(f"Error extracting face features: {str(e)}")
             raise ValueError(f"Failed to process face image: {str(e)}")
-    
+
     async def generate_image(self, face_image: Image.Image, request: InstantIDRequest) -> Image.Image:
         """Generate image using InstantID"""
         if not self.model_loaded:
             await self.load_models()
-        
         try:
-            # Extract face features
             face_emb, face_kps = self.extract_face_features(face_image)
-            
-            # Set seed if provided
             if request.seed is not None:
                 torch.manual_seed(request.seed)
                 if torch.cuda.is_available():
                     torch.cuda.manual_seed(request.seed)
-            
-            # Generate image
             result = self.pipeline(
                 request.prompt,
                 negative_prompt=request.negative_prompt,
@@ -185,51 +174,37 @@ class ModelManager:
                 width=request.width,
                 height=request.height,
             )
-            
             return result.images[0]
-            
         except Exception as e:
             logger.error(f"Error generating image: {str(e)}")
             raise ValueError(f"Failed to generate image: {str(e)}")
 
-# Global model manager
 model_manager = ModelManager()
 
 def image_to_base64(image: Image.Image) -> str:
-    """Convert PIL Image to base64 string"""
     buffered = io.BytesIO()
     image.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
     return f"data:image/png;base64,{img_str}"
 
 def base64_to_image(base64_str: str) -> Image.Image:
-    """Convert base64 string to PIL Image"""
     if base64_str.startswith('data:image'):
         base64_str = base64_str.split(',')[1]
-    
     image_data = base64.b64decode(base64_str)
     return Image.open(io.BytesIO(image_data))
 
 async def process_prediction(prediction_id: str, face_image: Image.Image, request: InstantIDRequest):
-    """Background task to process InstantID generation"""
     try:
         predictions[prediction_id]["status"] = "processing"
         predictions[prediction_id]["logs"] = "Starting image generation..."
-        
-        # Generate image
         result_image = await model_manager.generate_image(face_image, request)
-        
-        # Convert to base64
         output_base64 = image_to_base64(result_image)
-        
-        # Update prediction
         predictions[prediction_id].update({
             "status": "succeeded",
             "output": output_base64,
             "completed_at": datetime.utcnow().isoformat(),
             "logs": "Image generation completed successfully"
         })
-        
     except Exception as e:
         logger.error(f"Prediction {prediction_id} failed: {str(e)}")
         predictions[prediction_id].update({
@@ -241,13 +216,10 @@ async def process_prediction(prediction_id: str, face_image: Image.Image, reques
 
 @app.on_event("startup")
 async def startup_event():
-    """Load models on startup"""
     logger.info("Starting InstantID API server...")
-    # Models will be loaded on first request to avoid startup delays
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
     return {
         "message": "InstantID API Server",
         "status": "running",
@@ -258,27 +230,21 @@ async def root():
 async def create_prediction(
     background_tasks: BackgroundTasks,
     image: UploadFile = File(..., description="Face reference image"),
-    prompt: str = Field(..., description="Text prompt"),
-    negative_prompt: Optional[str] = Field(None),
-    controlnet_conditioning_scale: float = Field(0.8),
-    ip_adapter_scale: float = Field(0.8),
-    num_inference_steps: int = Field(50),
-    guidance_scale: float = Field(7.5),
-    seed: Optional[int] = Field(None),
-    width: int = Field(1024),
-    height: int = Field(1024)
+    prompt: str = Form(..., description="Text prompt"),
+    negative_prompt: Optional[str] = Form(None),
+    controlnet_conditioning_scale: float = Form(0.8),
+    ip_adapter_scale: float = Form(0.8),
+    num_inference_steps: int = Form(50),
+    guidance_scale: float = Form(7.5),
+    seed: Optional[int] = Form(None),
+    width: int = Form(1024),
+    height: int = Form(1024)
 ):
-    """Create a new InstantID prediction"""
     try:
-        # Validate image file
         if not image.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
-        
-        # Read and convert image
         image_data = await image.read()
         face_image = Image.open(io.BytesIO(image_data)).convert('RGB')
-        
-        # Create request object
         request = InstantIDRequest(
             prompt=prompt,
             negative_prompt=negative_prompt,
@@ -290,8 +256,6 @@ async def create_prediction(
             width=width,
             height=height
         )
-        
-        # Create prediction
         prediction_id = str(uuid.uuid4())
         predictions[prediction_id] = {
             "id": prediction_id,
@@ -302,59 +266,45 @@ async def create_prediction(
             "completed_at": None,
             "logs": "Prediction created"
         }
-        
-        # Start background processing
         background_tasks.add_task(process_prediction, prediction_id, face_image, request)
-        
         return PredictionResponse(**predictions[prediction_id])
-        
     except Exception as e:
         logger.error(f"Error creating prediction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/predictions/{prediction_id}", response_model=PredictionStatus)
 async def get_prediction(prediction_id: str):
-    """Get prediction status and results"""
     if prediction_id not in predictions:
         raise HTTPException(status_code=404, detail="Prediction not found")
-    
     return PredictionStatus(**predictions[prediction_id])
 
 @app.post("/predictions/{prediction_id}/cancel")
 async def cancel_prediction(prediction_id: str):
-    """Cancel a running prediction"""
     if prediction_id not in predictions:
         raise HTTPException(status_code=404, detail="Prediction not found")
-    
     prediction = predictions[prediction_id]
     if prediction["status"] in ["succeeded", "failed"]:
         raise HTTPException(status_code=400, detail="Prediction already completed")
-    
     predictions[prediction_id].update({
         "status": "canceled",
         "completed_at": datetime.utcnow().isoformat(),
         "logs": "Prediction canceled by user"
     })
-    
     return {"message": "Prediction canceled"}
 
 @app.get("/predictions")
 async def list_predictions():
-    """List all predictions"""
     return {"predictions": list(predictions.values())}
 
 @app.delete("/predictions/{prediction_id}")
 async def delete_prediction(prediction_id: str):
-    """Delete a prediction"""
     if prediction_id not in predictions:
         raise HTTPException(status_code=404, detail="Prediction not found")
-    
     del predictions[prediction_id]
     return {"message": "Prediction deleted"}
 
 @app.get("/health")
 async def health_check():
-    """Detailed health check"""
     return {
         "status": "healthy",
         "model_loaded": model_manager.model_loaded,
