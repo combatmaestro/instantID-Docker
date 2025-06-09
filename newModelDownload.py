@@ -50,7 +50,7 @@ with requests.get(url, stream=True) as r:
 # Extract it
 print("🗜️ Extracting antelopev2.zip...")
 with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-    zip_ref.extractall("./models/antelopev2")
+    zip_ref.extractall("./models")
 
 os.remove(zip_path)
 print("✅ Model download and extraction complete.")
