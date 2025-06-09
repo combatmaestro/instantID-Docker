@@ -3,7 +3,7 @@ import shutil
 import os
 import gdown
 import zipfile
-
+import requests
 # === Download from HuggingFace ===
 print("📥 Downloading ControlNet config and model...")
 hf_hub_download(
