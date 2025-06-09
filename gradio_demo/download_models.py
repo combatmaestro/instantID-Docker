@@ -30,21 +30,21 @@ hf_hub_download(
 )
 
 # === Download antelopev2 via kagglehub ===
-print("📥 Downloading antelopev2 model via kagglehub...")
+# print("📥 Downloading antelopev2 model via kagglehub...")
 
-# This will download and extract into a cache dir like ~/.kagglehub/
-path = kagglehub.dataset_download("dipakbg145198/antelopev2")
+# # This will download and extract into a cache dir like ~/.kagglehub/
+# path = kagglehub.dataset_download("dipakbg145198/antelopev2")
 
-print("📦 antelopev2 files downloaded to:", path)
+# print("📦 antelopev2 files downloaded to:", path)
 
-# === Copy files to the project directory ===
-target_dir = "./checkpoints/insightface/models"
-os.makedirs(target_dir, exist_ok=True)
+# # === Copy files to the project directory ===
+# target_dir = "./checkpoints/insightface/models"
+# os.makedirs(target_dir, exist_ok=True)
 
-for file in os.listdir(path):
-    source_file = os.path.join(path, file)
-    target_file = os.path.join(target_dir, file)
-    shutil.copy2(source_file, target_file)
+# for file in os.listdir(path):
+#     source_file = os.path.join(path, file)
+#     target_file = os.path.join(target_dir, file)
+#     shutil.copy2(source_file, target_file)
 
-print("✅ antelopev2 model copied to:", target_dir)
+# print("✅ antelopev2 model copied to:", target_dir)
 print("✅ All models downloaded and ready.")
