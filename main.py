@@ -97,7 +97,7 @@ class ModelManager:
             # Initialize face analysis
             self.face_app = FaceAnalysis(
                 name='antelopev2', 
-                root='./models', 
+                root='./', 
                 providers=['CUDAExecutionProvider', 'CPUExecutionProvider']
             )
             self.face_app.prepare(ctx_id=0, det_size=(640, 640))
