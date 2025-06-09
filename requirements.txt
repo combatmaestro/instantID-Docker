@@ -10,27 +10,32 @@ torchvision==0.15.2
 diffusers==0.24.0
 transformers==4.35.2
 accelerate==0.25.0
+peft==0.7.1
 
-# Face analysis
+# Face analysis & ONNX
 insightface==0.7.3
-onnxruntime-gpu==1.16.3  # Explicit GPU version
+onnxruntime-gpu==1.16.3  # Make sure GPU runtime is used
 opencv-python==4.8.1.78
+
+# Image & math
 Pillow==10.1.0
 numpy==1.24.3
+scipy==1.11.4
 
-# Pydantic compatibility
+# Config & validation
+omegaconf==2.3.0
 pydantic==1.10.13
 
-# FastAPI utilities
+# File uploads & web utils
 python-multipart==0.0.6
 aiofiles==23.2.0
 
-# Model download tools
+# Huggingface & model fetch
 huggingface-hub==0.19.4
 requests==2.31.0
 gdown==4.7.1
 tqdm==4.66.1
 
-# Extra utilities
+# Dev tools
 python-dotenv==1.0.0
 watchdog==3.0.0
